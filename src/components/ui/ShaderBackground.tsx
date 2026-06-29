@@ -30,6 +30,9 @@ export function ShaderBackground() {
     const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
     if (!gl) return;
 
+    // Habilitar de forma explícita la extensión de derivadas estándar en el contexto
+    gl.getExtension('OES_standard_derivatives');
+
     // Shaders de WebGL
     const vs = `
       attribute vec2 a_position;
@@ -41,6 +44,7 @@ export function ShaderBackground() {
     `;
 
     const fs = `
+      #extension GL_OES_standard_derivatives : enable
       precision highp float;
       varying vec2 v_texCoord;
       uniform float u_time;
@@ -95,6 +99,13 @@ export function ShaderBackground() {
       if (!s) return null;
       gl!.shaderSource(s, src);
       gl!.compileShader(s);
+      
+      // Validar si la compilación del shader falló
+      if (!gl!.getShaderParameter(s, gl!.COMPILE_STATUS)) {
+        console.warn('WebGL Shader Compilation Error:', gl!.getShaderInfoLog(s));
+        gl!.deleteShader(s);
+        return null;
+      }
       return s;
     }
 
@@ -107,6 +118,13 @@ export function ShaderBackground() {
     gl.attachShader(prog, vertexShader);
     gl.attachShader(prog, fragmentShader);
     gl.linkProgram(prog);
+
+    // Validar si la vinculación del programa WebGL falló
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn('WebGL Program Linking Error:', gl.getProgramInfoLog(prog));
+      return;
+    }
+
     gl.useProgram(prog);
 
     const buf = gl.createBuffer();
