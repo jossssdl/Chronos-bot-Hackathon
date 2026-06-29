@@ -317,7 +317,7 @@ export const SimulationCanvas = forwardRef<SimulationCanvasRef, SimulationCanvas
     };
 
     return (
-      <div className="relative inline-block border-2 border-indigo-500/30 rounded-xl overflow-hidden bg-[#090d16] shadow-[0_0_20px_rgba(99,102,241,0.15)] transition-all duration-300 hover:border-indigo-500/50">
+      <div className="relative block border-2 border-indigo-500/30 rounded-none overflow-hidden bg-[#090d16] w-full max-w-[400px] aspect-square shadow-[0_0_20px_rgba(99,102,241,0.15)] transition-all duration-300 hover:border-indigo-500/50">
         {/* Detalles de esquinas neón */}
         <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-indigo-400"></div>
         <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-indigo-400"></div>
@@ -332,7 +332,7 @@ export const SimulationCanvas = forwardRef<SimulationCanvasRef, SimulationCanvas
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
-          className="block cursor-crosshair touch-none"
+          className="block cursor-crosshair touch-none w-full h-full"
         />
       </div>
     );

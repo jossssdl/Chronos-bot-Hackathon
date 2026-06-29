@@ -28,10 +28,11 @@ export default function Home() {
   // 2. Control de navegación virtual (Secciones del Dashboard)
   const [activeSection, setActiveSection] = useState<'simulation' | 'fleet' | 'agents' | 'telemetry' | 'terminal' | 'logs' | 'network'>('simulation');
 
-  // 3. Modales de sistema
+  // 3. Modales de sistema y menú móvil
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [isSupportOpen, setIsSupportOpen] = useState<boolean>(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // 4. Estados complementarios de seguridad y visualización
   const [mitigationEnabled, setMitigationEnabled] = useState<boolean>(false);
@@ -92,7 +93,17 @@ export default function Home() {
 
       {/* Navbar Superior (TopNavBar) */}
       <header className="fixed top-0 w-full z-50 bg-[#0f172a]/15 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-8 py-4 h-16">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
+          {/* Botón de Menú Móvil responsivo */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            className="lg:hidden text-[#3b82f6] hover:text-white p-1 transition-all cursor-pointer flex items-center"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
           <h1 className="text-xl font-bold tracking-widest text-[#3b82f6] drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] font-mono uppercase cursor-default">
             CHRONOS-BOT
           </h1>
@@ -168,7 +179,9 @@ export default function Home() {
       </header>
 
       {/* Barra de Navegación Lateral (SideNavBar) */}
-      <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white/5 backdrop-blur-xl border-r border-white/10 flex flex-col py-8 z-40 font-mono">
+      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-[#0b0e15]/95 lg:bg-white/5 backdrop-blur-xl border-r border-white/10 flex flex-col py-8 z-40 font-mono transition-transform duration-300 ${
+        isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
         <div className="px-6 mb-10 flex flex-col gap-2">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-[#3b82f6]/10 border border-[#3b82f6]/40 flex items-center justify-center rounded-none">
@@ -189,7 +202,10 @@ export default function Home() {
 
         <nav className="flex-1 flex flex-col gap-2 text-xs uppercase tracking-widest text-slate-400">
           <button 
-            onClick={() => setActiveSection('fleet')}
+            onClick={() => {
+              setActiveSection('fleet');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
               activeSection === 'fleet' 
                 ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
@@ -202,7 +218,10 @@ export default function Home() {
             DASHBOARD
           </button>
           <button 
-            onClick={() => setActiveSection('agents')}
+            onClick={() => {
+              setActiveSection('agents');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
               activeSection === 'agents' 
                 ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
@@ -215,7 +234,10 @@ export default function Home() {
             AGENTS
           </button>
           <button 
-            onClick={() => setActiveSection('simulation')}
+            onClick={() => {
+              setActiveSection('simulation');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
               activeSection === 'simulation' 
                 ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
@@ -229,7 +251,10 @@ export default function Home() {
             SIMULATION
           </button>
           <button 
-            onClick={() => setActiveSection('telemetry')}
+            onClick={() => {
+              setActiveSection('telemetry');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
               activeSection === 'telemetry' 
                 ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
@@ -242,7 +267,10 @@ export default function Home() {
             TELEMETRY
           </button>
           <button 
-            onClick={() => setActiveSection('terminal')}
+            onClick={() => {
+              setActiveSection('terminal');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
               activeSection === 'terminal' 
                 ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
@@ -287,8 +315,16 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Contenedor de Contenido Principal (Desplazado mt-16 y ml-64) */}
-      <main className="ml-64 mt-16 p-6 flex-1 h-[calc(100vh-4rem)] overflow-y-auto relative z-10">
+      {/* Backdrop overlay para pantallas móviles */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden transition-all duration-300"
+        />
+      )}
+
+      {/* Contenedor de Contenido Principal (Desplazado mt-16 y ml-0 lg:ml-64) */}
+      <main className="ml-0 lg:ml-64 mt-16 p-4 md:p-6 flex-1 h-[calc(100vh-4rem)] overflow-y-auto relative z-10">
         
         {/* Renderizado Condicional de la Sección Virtual Seleccionada */}
         {activeSection === 'simulation' && (
