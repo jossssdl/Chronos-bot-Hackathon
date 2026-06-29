@@ -19,6 +19,21 @@ export default function Home() {
   const [copied, setCopied] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [gpuLoading, setGpuLoading] = useState<boolean>(false);
+  const [autoplay, setAutoplay] = useState<boolean>(false);
+  const autoplayRef = useRef<boolean>(false);
+
+  // Refs for tracking mutable states in async/loop callbacks to prevent stale closures
+  const robotPosRef = useRef<[number, number]>([0, 0]);
+  const obstaclesRef = useRef<[number, number][]>([]);
+
+  useEffect(() => {
+    robotPosRef.current = robotPos;
+  }, [robotPos]);
+
+  useEffect(() => {
+    obstaclesRef.current = obstacles;
+  }, [obstacles]);
+
   const [history, setHistory] = useState<string[]>([]);
   const [predictedPath, setPredictedPath] = useState<[number, number][]>([]);
   const [agentLogs, setAgentLogs] = useState<AgentLogMessage[]>([]);
@@ -73,15 +88,27 @@ export default function Home() {
   };
 
   // Move robot manually/automatically and apply boundaries
+  // Uses refs to ensure latest drawn coordinates are verified to block bad moves
   const moveRobotManually = (direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => {
-    let [x, y] = robotPos;
+    const [xVal, yVal] = robotPosRef.current;
+    let x = xVal;
+    let y = yVal;
+
     if (direction === 'UP' && y > 0) y -= 1;
     if (direction === 'DOWN' && y < 9) y += 1;
     if (direction === 'LEFT' && x > 0) x -= 1;
     if (direction === 'RIGHT' && x < 9) x += 1;
 
-    // Check if moving into obstacle
-    const isObstacle = obstacles.some(([ox, oy]) => ox === x && oy === y);
+    console.log('[DEBUG] moveRobotManually:', {
+      direction,
+      currentPos: [xVal, yVal],
+      targetPos: [x, y],
+      obstaclesCount: obstaclesRef.current.length,
+      obstaclesList: obstaclesRef.current,
+    });
+
+    // Check if target cell overlaps with obstacles
+    const isObstacle = obstaclesRef.current.some(([ox, oy]) => ox === x && oy === y);
     if (!isObstacle) {
       canvasRef.current?.setRobotPosition([x, y]);
       setPredictedPath([]); // Reset path prediction since position has changed
@@ -90,13 +117,12 @@ export default function Home() {
     return false;
   };
 
-  // Swarm Agent Call Execution
-  const handleRunSwarm = async () => {
+  // Executes a single step of the Swarm logic (Perceptor + Estratega + Move)
+  // Returns status information for autopilot loop
+  const executeSingleStep = async (): Promise<{ success: boolean; reachedGoal: boolean } | null> => {
     setLoading(true);
     setGpuLoading(true);
-    setAgentLogs([]);
     setPredictedPath([]);
-    setMetricsLoaded(true); // Switch telemetry to live mode
     
     // 1. Capture latest Canvas frame in Base64
     const currentBase64 = handleCaptureState();
@@ -135,6 +161,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image: currentBase64,
+          robotPos: robotPosRef.current,
           history: history.slice(-6), // Send last 6 moves to prevent context bloat
         }),
       });
@@ -192,22 +219,85 @@ export default function Home() {
         const moved = moveRobotManually(nextMove);
         if (moved) {
           setHistory((prev) => [...prev, nextMove]);
+          
+          // Get the fresh updated position from the ref
+          const [rx, ry] = robotPosRef.current;
+          if (rx === 9 && ry === 9) {
+            addLog('System', '🎉 ¡Chronos-Bot ha llegado con éxito a la Meta [9, 9]!');
+            return { success: true, reachedGoal: true };
+          }
+          return { success: true, reachedGoal: false };
         } else {
-          addLog('Error', 'El robot chocó contra un obstáculo. Ajusta la simulación.');
+          addLog('Error', `El robot chocó contra un obstáculo o límite en la dirección ${nextMove}.`);
+          return { success: false, reachedGoal: false };
         }
       } else {
         addLog('System', 'Advertencia: No se recibió ninguna recomendación de movimiento en next_move.');
+        return { success: false, reachedGoal: false };
       }
 
     } catch (err: any) {
       console.error(err);
       addLog('Error', `Fallo de comunicación: ${err.message || 'Error de red.'}`);
+      return { success: false, reachedGoal: false };
     } finally {
       setLoading(false);
+      await gpuPromise; // Sync parallel comparison promise
+    }
+  };
+
+  // Run a single manual trigger from the button
+  const handleRunSwarm = async () => {
+    setAgentLogs([]);
+    setMetricsLoaded(true);
+    await executeSingleStep();
+  };
+
+  // Autoplay loop that runs continuously until goal reached or error/block
+  const handleToggleAutoplay = async () => {
+    if (autoplay) {
+      // Toggle off
+      setAutoplay(false);
+      autoplayRef.current = false;
+      return;
     }
 
-    // Wait for the parallel GPU simulated call to complete as well
-    await gpuPromise;
+    setAutoplay(true);
+    autoplayRef.current = true;
+    setAgentLogs([]);
+    setMetricsLoaded(true);
+
+    let success = true;
+    let reachedGoal = false;
+
+    // Continuous loop execution
+    while (autoplayRef.current && success && !reachedGoal) {
+      // Check if robot is already at meta before starting step
+      const [rx, ry] = robotPosRef.current;
+      if (rx === 9 && ry === 9) {
+        reachedGoal = true;
+        break;
+      }
+
+      const res = await executeSingleStep();
+      if (!res) {
+        success = false;
+        break;
+      }
+
+      success = res.success;
+      reachedGoal = res.reachedGoal;
+
+      if (!success || reachedGoal || !autoplayRef.current) {
+        break;
+      }
+
+      // Delay between autonomous steps so user can see it move smoothly
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+
+    setAutoplay(false);
+    autoplayRef.current = false;
   };
 
   // Helper log message adder
@@ -228,7 +318,7 @@ export default function Home() {
     setAgentLogs([
       {
         agent: 'System',
-        text: 'Chronos-Bot listo para operar. Dibuja obstáculos en el Canvas y presiona "Ejecutar Enjambre" para iniciar la inferencia en tiempo real.',
+        text: 'Chronos-Bot listo para operar. Dibuja obstáculos en el Canvas y presiona "Ejecutar Enjambre" o "Iniciar Ruta Autónoma" para iniciar la inferencia en tiempo real.',
         timestamp: new Date().toLocaleTimeString(),
       }
     ]);
@@ -243,8 +333,8 @@ export default function Home() {
       <header className="relative z-10 border-b border-indigo-500/20 bg-slate-950/80 backdrop-blur-md px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="relative flex h-3 w-3">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${loading || gpuLoading ? 'bg-amber-400' : ''}`}></span>
-            <span className={`relative inline-flex rounded-full h-3 w-3 ${loading || gpuLoading ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${loading || gpuLoading || autoplay ? 'bg-amber-400' : ''}`}></span>
+            <span className={`relative inline-flex rounded-full h-3 w-3 ${loading || gpuLoading || autoplay ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 font-mono">
@@ -290,6 +380,7 @@ export default function Home() {
                 onRobotMove={handleRobotMove}
                 onObstaclesChange={handleObstaclesChange}
                 robotPos={robotPos}
+                obstacles={obstacles}
                 predictedPath={predictedPath}
               />
             </div>
@@ -308,7 +399,7 @@ export default function Home() {
                   setPredictedPath([]);
                   handleCaptureState();
                 }}
-                disabled={loading || gpuLoading}
+                disabled={loading || gpuLoading || autoplay}
                 className="px-3 py-2 rounded-lg bg-slate-900 border border-red-500/30 text-red-400 text-xs font-mono uppercase tracking-wider hover:bg-red-500/10 disabled:opacity-50 active:scale-95 transition-all"
               >
                 Limpiar Obstáculos
@@ -320,7 +411,7 @@ export default function Home() {
                   setPredictedPath([]);
                   handleCaptureState();
                 }}
-                disabled={loading || gpuLoading}
+                disabled={loading || gpuLoading || autoplay}
                 className="px-3 py-2 rounded-lg bg-slate-900 border border-blue-500/30 text-blue-400 text-xs font-mono uppercase tracking-wider hover:bg-blue-500/10 disabled:opacity-50 active:scale-95 transition-all"
               >
                 Reset Robot
@@ -330,35 +421,56 @@ export default function Home() {
                   handleCaptureState();
                   addLog('System', 'Estado del Canvas capturado manualmente.');
                 }}
-                disabled={loading || gpuLoading}
+                disabled={loading || gpuLoading || autoplay}
                 className="px-3 py-2 rounded-lg bg-slate-900 border border-indigo-500/30 text-indigo-400 text-xs font-mono uppercase tracking-wider hover:bg-indigo-500/10 disabled:opacity-50 active:scale-95 transition-all"
               >
                 Capturar Estado
               </button>
             </div>
 
-            {/* CRITICAL: Execute swarm decision button */}
-            <button
-              onClick={handleRunSwarm}
-              disabled={loading || gpuLoading}
-              className="w-full mt-3 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all font-mono text-xs uppercase tracking-widest text-white font-bold disabled:opacity-50 shadow-[0_0_20px_rgba(99,102,241,0.5)] flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                  Cerebras Gemma 4 respondiendo...
-                </>
-              ) : gpuLoading ? (
-                <>
-                  <span className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full"></span>
-                  GPU tradicional procesando...
-                </>
-              ) : (
-                <>
-                  🚀 EJECUTAR ENJAMBRE (CEREBRAS)
-                </>
-              )}
-            </button>
+            {/* CRITICAL: Execute swarm decision buttons */}
+            <div className="flex flex-col gap-2 w-full mt-4">
+              
+              {/* Autoplay / Autopilot button */}
+              <button
+                onClick={handleToggleAutoplay}
+                disabled={loading || gpuLoading}
+                className={`w-full py-3.5 rounded-lg font-mono text-xs uppercase tracking-widest font-bold active:scale-95 transition-all flex items-center justify-center gap-2 ${
+                  autoplay
+                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                }`}
+              >
+                {autoplay ? (
+                  <>
+                    🛑 DETENER AUTOPILOTO
+                  </>
+                ) : (
+                  <>
+                    🤖 INICIAR RUTA AUTÓNOMA (LOOP)
+                  </>
+                )}
+              </button>
+
+              {/* Single step execution button */}
+              <button
+                onClick={handleRunSwarm}
+                disabled={loading || gpuLoading || autoplay}
+                className="w-full py-2.5 rounded-lg bg-indigo-600/90 hover:bg-indigo-500 active:scale-95 transition-all font-mono text-xs uppercase tracking-widest text-indigo-100 disabled:opacity-40 flex items-center justify-center gap-2 border border-indigo-500/30"
+              >
+                {loading ? (
+                  <>
+                    <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                    Pensando...
+                  </>
+                ) : (
+                  <>
+                    🚀 EJECUTAR UN PASO
+                  </>
+                )}
+              </button>
+
+            </div>
           </div>
 
           {/* Manual Controller (Only for Phase 1 Debugging/Testing) */}
@@ -372,7 +484,7 @@ export default function Home() {
             <div className="flex flex-col items-center gap-2 mt-4">
               <button
                 onClick={() => moveRobotManually('UP')}
-                disabled={loading || gpuLoading}
+                disabled={loading || gpuLoading || autoplay}
                 className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900 border border-indigo-500/30 hover:bg-indigo-950 hover:border-indigo-400 active:scale-90 transition-all text-indigo-300 font-mono disabled:opacity-50"
               >
                 ▲
@@ -380,14 +492,14 @@ export default function Home() {
               <div className="flex gap-8">
                 <button
                   onClick={() => moveRobotManually('LEFT')}
-                  disabled={loading || gpuLoading}
+                  disabled={loading || gpuLoading || autoplay}
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900 border border-indigo-500/30 hover:bg-indigo-950 hover:border-indigo-400 active:scale-90 transition-all text-indigo-300 font-mono disabled:opacity-50"
                 >
                   ◀
                 </button>
                 <button
                   onClick={() => moveRobotManually('RIGHT')}
-                  disabled={loading || gpuLoading}
+                  disabled={loading || gpuLoading || autoplay}
                   className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900 border border-indigo-500/30 hover:bg-indigo-950 hover:border-indigo-400 active:scale-90 transition-all text-indigo-300 font-mono disabled:opacity-50"
                 >
                   ▶
@@ -395,7 +507,7 @@ export default function Home() {
               </div>
               <button
                 onClick={() => moveRobotManually('DOWN')}
-                disabled={loading || gpuLoading}
+                disabled={loading || gpuLoading || autoplay}
                 className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900 border border-indigo-500/30 hover:bg-indigo-950 hover:border-indigo-400 active:scale-90 transition-all text-indigo-300 font-mono disabled:opacity-50"
               >
                 ▼
@@ -475,8 +587,8 @@ export default function Home() {
                   </span>
                 )}
               </h2>
-              <span className={`px-2 py-0.5 rounded border text-[10px] uppercase ${loading ? 'bg-amber-950/50 border-amber-500/30 text-amber-400' : 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400'}`}>
-                {loading ? 'Procesando' : 'Online'}
+              <span className={`px-2 py-0.5 rounded border text-[10px] uppercase ${loading || autoplay ? 'bg-amber-950/50 border-amber-500/30 text-amber-400 animate-pulse' : 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400'}`}>
+                {loading || autoplay ? 'Procesando' : 'Online'}
               </span>
             </div>
 

@@ -8,7 +8,7 @@ const client = new Cerebras({
 
 export async function POST(req: NextRequest) {
   try {
-    const { image, history } = await req.json();
+    const { image, history, robotPos } = await req.json();
 
     if (!image) {
       return NextResponse.json({ error: 'Falta la imagen del mapa en formato Base64' }, { status: 400 });
@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
     if (!process.env.CEREBRAS_API_KEY) {
       return NextResponse.json({ error: 'CEREBRAS_API_KEY no está configurada en el servidor' }, { status: 500 });
     }
+
+    const currentRobotCoords = robotPos ? `[${robotPos[0]}, ${robotPos[1]}]` : '[0, 0]';
 
     // --- AGENTE 1: PERCEPTOR (VISIÓN MULTIMODAL) ---
     const startPerceptor = performance.now();
@@ -27,8 +29,9 @@ export async function POST(req: NextRequest) {
         {
           role: 'system',
           content: `Eres el sistema visual de un robot autónomo. Analiza la imagen matricial adjunta (que representa un lienzo de simulación de una grilla de 10x10).
+La posición exacta actual del robot en la grilla es ${currentRobotCoords}.
 Identifica las coordenadas (X, Y) exactas (indexadas de 0 a 9) de:
-1. El Robot (indicado por el cuadro azul neón).
+1. El Robot (que se encuentra exactamente en ${currentRobotCoords}).
 2. La Meta (indicada por el cuadro verde neón, típicamente en [9,9]).
 3. Cada bloque de Obstáculo (indicado por los cuadros rojos).
 
@@ -71,6 +74,7 @@ Genera un reporte conciso y resumido en formato textual plano con las coordenada
           role: 'system',
           content: `Eres el cerebro analítico de un robot autónomo de rescate.
 Tu tarea es analizar el reporte de mapa provisto por el agente perceptor y el historial de movimientos anteriores del robot.
+La posición actual e indiscutible del robot es ${currentRobotCoords}.
 Basándote en estos datos, calcula analíticamente la trayectoria más rápida y segura para que el robot avance hacia la meta [9,9] evadiendo los obstáculos detectados.
 
 Debes elegir exactamente una dirección de movimiento inmediato para el robot ("UP", "DOWN", "LEFT" o "RIGHT"), predecir las próximas 3 coordenadas [x, y] de tu trayectoria planificada para optimizar el render, y proveer una explicación corta de máximo 15 palabras de tu decisión.
@@ -78,7 +82,8 @@ Minimiza pasos, evita bucles infinitos y no atravieses obstáculos rojos.`,
         },
         {
           role: 'user',
-          content: `${historyText}
+          content: `Posición actual del robot: ${currentRobotCoords}
+${historyText}
 
 Reporte de posición y amenazas provisto por el perceptor:
 ${perceptorReport}`,
@@ -114,8 +119,8 @@ ${perceptorReport}`,
           },
         },
       },
-      // Activate deep reasoning mode
-      ...({ reasoning_effort: 'high' } as any),
+      // reasoning_effort is disabled (none) for blazingly fast response
+      ...({ reasoning_effort: 'none' } as any),
     });
 
     const endEstratega = performance.now();
