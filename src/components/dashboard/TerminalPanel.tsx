@@ -115,22 +115,25 @@ export function TerminalPanel() {
         </div>
 
         {/* Input de comandos */}
-        <form onSubmit={handleCommandSubmit} className="mt-4 flex gap-2">
-          <span className="text-[#3b82f6] font-bold py-1.5 pl-1 select-none">
-            operator@chronos-bot:~$
-          </span>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="flex-1 bg-slate-950 border border-[#6366f133] focus:border-[#3b82f6] px-3 py-1.5 text-[#3b82f6] font-semibold font-mono rounded-none outline-none"
-            placeholder="Escribe 'help' y presiona Enter..."
-            autoFocus
-          />
+        <form onSubmit={handleCommandSubmit} className="mt-4 flex flex-col sm:flex-row gap-2">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-[#3b82f6] font-bold py-1.5 pl-1 select-none whitespace-nowrap">
+              <span className="hidden sm:inline">operator@chronos-bot:~$</span>
+              <span className="inline sm:hidden">&gt;</span>
+            </span>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-1 bg-slate-950 border border-[#6366f133] focus:border-[#3b82f6] px-3 py-1.5 text-[#3b82f6] font-semibold font-mono rounded-none outline-none min-w-0"
+              placeholder="Escribe 'help' y presiona Enter..."
+              autoFocus
+            />
+          </div>
           <button
             type="submit"
             style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
-            className="px-4 py-1.5 bg-indigo-950/40 border border-indigo-500/30 text-indigo-300 text-[10px] uppercase hover:bg-indigo-900/50 hover:border-indigo-400 transition-all cursor-pointer font-bold"
+            className="w-full sm:w-auto px-4 py-1.5 bg-indigo-950/40 border border-indigo-500/30 text-indigo-300 text-[10px] uppercase hover:bg-indigo-900/50 hover:border-indigo-400 transition-all cursor-pointer font-bold shrink-0 text-center"
           >
             EXEC
           </button>

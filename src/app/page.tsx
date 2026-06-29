@@ -92,8 +92,8 @@ export default function Home() {
       <ShaderBackground />
 
       {/* Navbar Superior (TopNavBar) */}
-      <header className="fixed top-0 w-full z-50 bg-[#0f172a]/15 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-8 py-4 h-16">
-        <div className="flex items-center gap-4 md:gap-6">
+      <header className="fixed top-0 w-full z-50 bg-[#0f172a]/15 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-4 md:px-8 py-4 h-16">
+        <div className="flex items-center gap-3 md:gap-6">
           {/* Botón de Menú Móvil responsivo */}
           <button
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -104,10 +104,10 @@ export default function Home() {
             </svg>
           </button>
 
-          <h1 className="text-xl font-bold tracking-widest text-[#3b82f6] drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] font-mono uppercase cursor-default">
+          <h1 className="text-sm md:text-xl font-bold tracking-widest text-[#3b82f6] drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] font-mono uppercase cursor-default">
             CHRONOS-BOT
           </h1>
-          <div className="flex gap-4 items-center">
+          <div className="hidden sm:flex gap-4 items-center">
             <span className="px-2.5 py-1 rounded bg-[#4edea3]/10 border border-[#4edea3]/30 font-mono text-[10px] text-[#4edea3] uppercase flex items-center gap-2 cursor-default">
               <span className="w-1.5 h-1.5 rounded-none bg-[#4edea3] animate-pulse"></span>
               {loading || gpuLoading || autoplay ? 'PROCESANDO' : 'ONLINE / STANDBY'}
@@ -139,10 +139,10 @@ export default function Home() {
           </button>
         </nav>
 
-        <div className="flex gap-6 items-center">
+        <div className="flex gap-4 md:gap-6 items-center">
           <button 
             onClick={() => setIsSettingsOpen(true)}
-            className="font-mono text-[10px] uppercase tracking-widest text-[#3b82f6] hover:bg-[#3b82f6]/10 px-4 py-2 border border-[#3b82f6]/30 rounded-none transition-all duration-300 cursor-pointer"
+            className="hidden md:inline-block font-mono text-[10px] uppercase tracking-widest text-[#3b82f6] hover:bg-[#3b82f6]/10 px-4 py-2 border border-[#3b82f6]/30 rounded-none transition-all duration-300 cursor-pointer"
           >
             SYSTEM_UP
           </button>
@@ -168,7 +168,7 @@ export default function Home() {
               )}
             </button>
           </div>
-          <div className="w-8 h-8 rounded-none border border-[#3b82f6]/40 overflow-hidden ml-2">
+          <div className="hidden sm:block w-8 h-8 rounded-none border border-[#3b82f6]/40 overflow-hidden ml-2">
             <img 
               className="w-full h-full object-cover" 
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0vWcC6E-zezu0cUUiBXZy9kL-pkZ0DPXPzlbinCysm8iRWcjhq8fYB5QvgBAk949WM3T2Z2Xgl0vEfks5xgw-S-3ePu0PytEPCrUOLaO0x5u9gZVS_eP4H4LOmR3wrhSwY88rU1T6ZZhljK5PCIj73LY5DNM_gGENoa1PDrW-NC2aqXcnxZWCqIqe0XLcOWTrwpOb51uJqqrRJePaOnEb_Fh4iCfG7gcMFF7NNW1CZpXoMu62PVZJQfvFHyU9bwawegqdj6NsmLKL"
@@ -179,7 +179,7 @@ export default function Home() {
       </header>
 
       {/* Barra de Navegación Lateral (SideNavBar) */}
-      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-[#0b0e15]/95 lg:bg-white/5 backdrop-blur-xl border-r border-white/10 flex flex-col py-8 z-40 font-mono transition-transform duration-300 ${
+      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-[#0b0e15]/95 lg:bg-white/5 backdrop-blur-xl border-r border-white/10 flex flex-col py-8 z-40 font-mono transition-transform duration-300 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-950/60 ${
         isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="px-6 mb-10 flex flex-col gap-2">
@@ -281,6 +281,51 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             TERMINAL
+          </button>
+          <button 
+            onClick={() => {
+              setActiveSection('logs');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
+              activeSection === 'logs' 
+                ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
+                : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            LOGS
+          </button>
+          <button 
+            onClick={() => {
+              setActiveSection('network');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 ${
+              activeSection === 'network' 
+                ? 'bg-[#3b82f6]/10 text-[#3b82f6] border-[#3b82f6]' 
+                : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            NETWORK
+          </button>
+          <button 
+            onClick={() => {
+              setIsSettingsOpen(true);
+              setIsMobileSidebarOpen(false);
+            }}
+            className="lg:hidden flex items-center gap-4 px-6 py-3 transition-all duration-300 border-r-2 border-transparent text-slate-400 hover:text-white hover:bg-white/5"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            SETTINGS
           </button>
         </nav>
 
