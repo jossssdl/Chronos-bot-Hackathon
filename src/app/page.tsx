@@ -21,13 +21,7 @@ export default function Home() {
   const [gpuLoading, setGpuLoading] = useState<boolean>(false);
   const [history, setHistory] = useState<string[]>([]);
   const [predictedPath, setPredictedPath] = useState<[number, number][]>([]);
-  const [agentLogs, setAgentLogs] = useState<AgentLogMessage[]>([
-    {
-      agent: 'System',
-      text: 'Chronos-Bot listo para operar. Dibuja obstáculos en el Canvas y presiona "Ejecutar Enjambre" para iniciar la inferencia en tiempo real.',
-      timestamp: new Date().toLocaleTimeString(),
-    }
-  ]);
+  const [agentLogs, setAgentLogs] = useState<AgentLogMessage[]>([]);
 
   // Telemetry Metrics (Dynamic)
   const [cerebrasMetrics, setCerebrasMetrics] = useState({
@@ -228,9 +222,16 @@ export default function Home() {
     ]);
   };
 
-  // Initialize and capture Base64 on start
+  // Initialize logs and capture Base64 on start to prevent hydration mismatch
   useEffect(() => {
     handleCaptureState();
+    setAgentLogs([
+      {
+        agent: 'System',
+        text: 'Chronos-Bot listo para operar. Dibuja obstáculos en el Canvas y presiona "Ejecutar Enjambre" para iniciar la inferencia en tiempo real.',
+        timestamp: new Date().toLocaleTimeString(),
+      }
+    ]);
   }, []);
 
   return (
